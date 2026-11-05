@@ -24,12 +24,38 @@ export const PrismaDocsModal: React.FC<PrismaDocsModalProps> = ({ isOpen, onClos
   const [selectedFileId, setSelectedFileId] = useState<string>('schema');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  const [copiedAll, setCopiedAll] = useState(false);
+
   if (!isOpen) return null;
 
   const copyCode = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleDownloadProjectBundle = () => {
+    const bundle = FILES.reduce((acc, f) => {
+      acc[f.path] = f.code;
+      return acc;
+    }, {} as Record<string, string>);
+
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'nextjs15-prisma-project-bundle.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyAllFiles = () => {
+    const fullText = FILES.map((f) => `// ==========================================\n// FAIL: ${f.path}\n// ==========================================\n${f.code}\n\n`).join('\n');
+    navigator.clipboard.writeText(fullText);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2500);
   };
 
   const FILES = [
@@ -947,27 +973,88 @@ export default function RootLayout({
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "@prisma/client": "^6.4.0",
+    "@prisma/client": "^6.19.3",
     "lucide-react": "^0.475.0",
-    "next": "^15.1.7",
+    "next": "^15.2.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.7",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "postcss": "^8.5.2",
-    "prisma": "^6.4.0",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4.0.7",
     "typescript": "^5.7.3"
+  }
+}`,
+    },
+    {
+      id: 'api_tasks_detail',
+      path: 'app/api/tasks/[id]/route.ts',
+      title: 'API Tasks Dynamic Route Handlers (app/api/tasks/[id]/route.ts)',
+      category: 'API Routes',
+      language: 'typescript',
+      code: `// app/api/tasks/[id]/route.ts
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+// Syarat KETAT Next.js 15: params MESTI Promise
+type RouteProps = {
+  params: Promise<{ id: string }>;
+};
+
+// GET: Dapatkan rekod mengikut ID
+export async function GET(req: Request, props: RouteProps) {
+  try {
+    const { id } = await props.params;
+
+    const task = await prisma.page.findUnique({
+      where: { id },
+    });
+
+    if (!task) {
+      return NextResponse.json(
+        { success: false, error: 'Rekod tidak dijumpai' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: task }, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Padam rekod mengikut ID
+export async function DELETE(req: Request, props: RouteProps) {
+  try {
+    const { id } = await props.params;
+
+    await prisma.page.delete({
+      where: { id },
+    });
+
+    return NextResponse.json(
+      { success: true, message: 'Rekod berjaya dipadam' },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
 }`,
     },
@@ -996,12 +1083,33 @@ export default function RootLayout({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyAllFiles}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700"
+              title="Salin semua fail ke clipboard"
+            >
+              {copiedAll ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-indigo-400" />}
+              <span>{copiedAll ? 'Semua Disalin!' : 'Salin Semua'}</span>
+            </button>
+
+            <button
+              onClick={handleDownloadProjectBundle}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+              title="Muat turun manifest bundle JSON bagi semua fail"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Muat Turun Projek (.json)</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              title="Tutup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Explorer Workspace (Sidebar + Code View) */}
