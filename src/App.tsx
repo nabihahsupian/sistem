@@ -56,16 +56,26 @@ export default function App() {
   useEffect(() => {
     refreshData();
 
-    // Check initial hash for direct link navigation (e.g. /#p/kempen-raya or #p/kempen-raya)
+    // Check initial hash for direct link navigation (e.g. #/p/kempen-raya, #/dashboard/create, #/dashboard/edit/:id)
     const handleHashChange = () => {
       const hash = window.location.hash;
-      const match = hash.match(/^#\/?p\/([^/?#]+)/);
-      if (match && match[1]) {
-        setActiveSlug(match[1]);
+      const matchLive = hash.match(/^#\/?p\/([^/?#]+)/);
+      const matchEdit = hash.match(/^#\/?dashboard\/edit\/([^/?#]+)/);
+      const matchCreate = hash.match(/^#\/?dashboard\/create/);
+
+      if (matchLive && matchLive[1]) {
+        setActiveSlug(matchLive[1]);
         setCurrentView('live');
-      } else if (!hash || hash === '#' || hash === '#dashboard') {
+      } else if (matchEdit && matchEdit[1]) {
+        setEditingPageId(matchEdit[1]);
+        setCurrentView('edit');
+      } else if (matchCreate) {
+        setEditingPageId(null);
+        setCurrentView('create');
+      } else {
         setCurrentView('dashboard');
         setActiveSlug(null);
+        setEditingPageId(null);
       }
     };
 
@@ -84,11 +94,12 @@ export default function App() {
   // Handle navigation
   const navigateTo = (view: 'dashboard' | 'create') => {
     if (view === 'dashboard') {
-      window.location.hash = '';
+      window.location.hash = 'dashboard';
       setCurrentView('dashboard');
       setEditingPageId(null);
       setActiveSlug(null);
     } else {
+      window.location.hash = 'dashboard/create';
       setEditingPageId(null);
       setCurrentView('create');
     }
@@ -96,6 +107,7 @@ export default function App() {
   };
 
   const handleEditPage = (id: string) => {
+    window.location.hash = `dashboard/edit/${id}`;
     setEditingPageId(id);
     setCurrentView('edit');
   };
@@ -130,6 +142,7 @@ export default function App() {
   const handleSavedPage = (slug: string) => {
     refreshData();
     showToast(`Halaman "${slug}" berjaya disimpan!`);
+    window.location.hash = 'dashboard';
     setCurrentView('dashboard');
     setEditingPageId(null);
   };
