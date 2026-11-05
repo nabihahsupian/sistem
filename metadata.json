@@ -1,0 +1,6 @@
+{
+  "name": "PekitHost - Mini-CMS & HTML Web Hosting",
+  "description": "Platform pengehosan web statik & mini-CMS pantas untuk halaman HTML kustom, penjanaan kod QR, pengurusan slug URL, dan paparan interaktif.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
